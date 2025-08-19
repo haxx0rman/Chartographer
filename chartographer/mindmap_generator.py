@@ -5,9 +5,6 @@ import json
 import logging
 import os
 import re
-import time
-import base64
-import zlib
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Any, Optional
@@ -48,9 +45,8 @@ class TokenUsage:
 class Mindmap:
     """Result of mindmap generation"""
     document_filename: str
-    mermaid_syntax: str
-    html_content: str
-    markdown_outline: str
+    mermaid: str
+    markdown: str
     token_usage: TokenUsage
     generated_at: datetime = field(default_factory=datetime.now)
     
@@ -276,22 +272,17 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             # Base filename for outputs (use document filename without extension)
             base_filename = os.path.splitext(os.path.basename(mindmap_result.document_filename))[0]
 
-            # Save HTML content
-            html_output_path = os.path.join(output_dir, f"{base_filename}_mindmap.html")
-            with open(html_output_path, 'w', encoding='utf-8') as html_file:
-                html_file.write(mindmap_result.html_content)
-            self.logger.info(f"✅ Saved HTML mindmap to: {html_output_path}")
 
             # Save Mermaid syntax
             mermaid_output_path = os.path.join(output_dir, f"{base_filename}_mermaid.txt")
             with open(mermaid_output_path, 'w', encoding='utf-8') as mermaid_file:
-                mermaid_file.write(mindmap_result.mermaid_syntax)
+                mermaid_file.write(mindmap_result.mermaid)
             self.logger.info(f"✅ Saved Mermaid syntax to: {mermaid_output_path}")
 
             # Save Markdown outline
             markdown_output_path = os.path.join(output_dir, f"{base_filename}_outline.md")
             with open(markdown_output_path, 'w', encoding='utf-8') as markdown_file:
-                markdown_file.write(mindmap_result.markdown_outline)
+                markdown_file.write(mindmap_result.markdown)
             self.logger.info(f"✅ Saved Markdown outline to: {markdown_output_path}")
 
             # Save token usage and other stats as JSON
@@ -343,7 +334,6 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
                 mindmap_result = await self._generate_enhanced_mindmap(text_content, doc_type)
             
             # Generate outputs
-            html_content = self._generate_enhanced_html(mindmap_result)
             markdown_outline = self._convert_mindmap_to_markdown(mindmap_result)
             
            
@@ -351,9 +341,8 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             # Create final result
             result = Mindmap(
                 document_filename="NA",
-                mermaid_syntax=mindmap_result,
-                html_content=html_content,
-                markdown_outline=markdown_outline,
+                mermaid=mindmap_result,
+                markdown=markdown_outline,
                 token_usage=TokenUsage(
                     input_tokens=self.token_tracker.get_total_tokens()['input'],
                     output_tokens=self.token_tracker.get_total_tokens()['output'],
@@ -998,89 +987,6 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
                         items.append(line)
             
             return items  # Return all items (no limit)
-    
-    def _generate_enhanced_html(self, mermaid_syntax: str) -> str:
-        """Generate enhanced HTML with better styling"""
-        # Create edit URL for Mermaid Live Editor
-        data = {
-            "code": mermaid_syntax,
-            "mermaid": {"theme": "default"}
-        }
-        json_string = json.dumps(data)
-        compressed_data = zlib.compress(json_string.encode('utf-8'), level=9)
-        base64_string = base64.urlsafe_b64encode(compressed_data).decode('utf-8').rstrip('=')
-        edit_url = f'https://mermaid.live/edit#pako:{base64_string}'
-        
-        html_template = f"""<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>BookWorm Advanced Mindmap</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.0/dist/mermaid.min.js"></script>
-    <style>
-        body {{
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }}
-        #mermaid {{
-            width: 100%;
-            height: calc(100vh - 80px);
-            overflow: auto;
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }}
-        .header {{
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }}
-        .edit-btn {{
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            transition: all 0.3s ease;
-        }}
-        .edit-btn:hover {{
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-1px);
-        }}
-    </style>
-</head>
-<body class="bg-gray-50">
-    <div class="header flex items-center justify-between p-6">
-        <div>
-            <h1 class="text-2xl font-bold">🧠 BookWorm Advanced Mindmap</h1>
-            <p class="text-blue-100 mt-1">Generated by BookWorm Knowledge Ingestion System</p>
-        </div>
-        <a href="{edit_url}" target="_blank" 
-           class="edit-btn px-6 py-3 rounded-lg text-white font-medium hover:shadow-lg">
-            ✏️ Edit in Mermaid Live Editor
-        </a>
-    </div>
-    <div id="mermaid" class="p-8">
-        <pre class="mermaid">
-{mermaid_syntax}
-        </pre>
-    </div>
-    <script>
-        mermaid.initialize({{
-            startOnLoad: true,
-            securityLevel: 'loose',
-            theme: 'default',
-            mindmap: {{
-                useMaxWidth: true,
-                padding: 20
-            }},
-            themeConfig: {{
-                controlBar: true
-            }}
-        }});
-    </script>
-</body>
-</html>"""
-        
-        return html_template
     
     def _convert_mindmap_to_markdown(self, mermaid_syntax: str) -> str:
         """Convert Mermaid mindmap to markdown outline"""
