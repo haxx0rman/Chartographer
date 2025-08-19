@@ -234,11 +234,14 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             if doc_type not in self.type_prompts:
                 self.type_prompts[doc_type] = self.type_prompts[DocumentType.GENERAL]
 
-    async def generate_mindmap_from_file(self, filename: str, output_dir: str) -> Mindmap:
+    async def generate_mindmap_from_file(self, filename: str, output_dir: str = "", save_files = True) -> Mindmap:
         """
         Generate a mindmap from a file by reading its content and calling the text-based generator.
         Also saves the generated mindmaps and related statistics to the specified output directory.
         """
+
+        if output_dir == "" and save_files:
+            raise ValueError("Output directory must be specified if save_files is True")
 
         try:
             # Read the file content
@@ -248,11 +251,12 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             self.logger.info(f"📄 Successfully read document: {filename}")
 
             # Generate mindmap using the content
-            result = await self.generate_mindmap_from_text(text_content, filename)
+            result = await self.generate_mindmap_from_text(text_content, output_dir, save_files)
 
-            # Save output files in the specified directory
-            self._save_outputs(result, output_dir)
-            self.logger.info(f"✅ Mindmap generated and saved from file: {filename}")
+            # if save_files:
+            #     # Save output files in the specified directory
+            #     self._save_outputs(result, output_dir)
+            #     self.logger.info(f"✅ Mindmap generated and saved from file: {filename}")
 
             return result
 
@@ -312,12 +316,14 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             self.logger.error(f"Failed to save mindmap outputs: {e}")
 
 
-    async def generate_mindmap_from_text(self, text_content: str, filename) -> Mindmap:
+    async def generate_mindmap_from_text(self, text_content: str, output_dir: str = "", save_files = True) -> Mindmap:
         """Generate a comprehensive mindmap with advanced features and chunking support"""
-        start_time = time.time()
+        if output_dir == "" and save_files:
+            raise ValueError("Output directory must be specified if save_files is True")
+
         
         try:
-            self.logger.info(f"🚀 Starting advanced mindmap generation for document {filename}")
+            self.logger.info("🚀 Starting advanced mindmap generation for document...")
             
             # Reset tracking for this document
             self._reset_tracking()
@@ -331,20 +337,20 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             
             if needs_chunking or True:  # Always chunk for testing purposes
                 self.logger.info(f"📚 Document is large ({len(text_content.split()):,} words), using chunked processing")
-                mindmap_result = await self._generate_chunked_mindmap(text_content, doc_type, filename)
+                mindmap_result = await self._generate_chunked_mindmap(text_content, doc_type)
             else:
                 self.logger.info("📄 Document size manageable, using standard processing")
-                mindmap_result = await self._generate_enhanced_mindmap(text_content, doc_type, filename)
+                mindmap_result = await self._generate_enhanced_mindmap(text_content, doc_type)
             
             # Generate outputs
             html_content = self._generate_enhanced_html(mindmap_result)
             markdown_outline = self._convert_mindmap_to_markdown(mindmap_result)
             
-            processing_time = time.time() - start_time
+           
             
             # Create final result
             result = Mindmap(
-                document_filename=filename,
+                document_filename="NA",
                 mermaid_syntax=mindmap_result,
                 html_content=html_content,
                 markdown_outline=markdown_outline,
@@ -355,11 +361,17 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
                     model=self.config.llm_model,
                 )
             )
+
+            if save_files:
+                # Save output files in the specified directory
+                self._save_outputs(result, output_dir)
+                self.logger.info("✅ Mindmap generated and saved from text content")
+
             
             # Print usage report
             self.token_tracker.print_usage_report()
             
-            self.logger.info(f"✅ Advanced mindmap generation completed in {processing_time:.2f} seconds")
+            self.logger.info("✅ Advanced mindmap generation completed")
             return result
             
         except Exception as e:
@@ -433,7 +445,7 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             'details': set()
         }
 
-    async def _generate_chunked_mindmap(self, text_content: str, doc_type: DocumentType, filename: str) -> str:
+    async def _generate_chunked_mindmap(self, text_content: str, doc_type: DocumentType) -> str:
         """Generate mindmap from large document using chunking approach"""
         try:
             # Create chunks
@@ -443,9 +455,9 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             chunk_limit = int(os.getenv('BOOKWORM_CHUNK_LIMIT', '9999'))
             if chunk_limit > 0:
                 chunks = chunks[:chunk_limit]
-                self.logger.info(f"🔄 Processing {len(chunks)} chunks (limited for testing) for document {filename}")
+                self.logger.info(f"🔄 Processing {len(chunks)} chunks (limited for testing)")
             else:
-                self.logger.info(f"🔄 Processing {len(chunks)} chunks for document {filename}")
+                self.logger.info("🔄 Processing {len(chunks)} chunks")
             
             # Generate partial mindmaps for each chunk
             chunk_mindmaps = []
@@ -459,7 +471,7 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
                     self._reset_chunk_concepts()
                     
                     # Generate mindmap for this chunk
-                    chunk_result = await self._generate_enhanced_mindmap(chunk["text"], doc_type, f"{filename}_chunk_{i}")
+                    chunk_result = await self._generate_enhanced_mindmap(chunk["text"], doc_type)
                     chunk_mindmaps.append({
                         "index": i,
                         "mermaid": chunk_result,
@@ -514,7 +526,7 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             # Fallback to standard processing with truncated content
             truncated_content = " ".join(text_content.split()[:8000])
             self.logger.info("🔄 Falling back to standard processing with truncated content")
-            return await self._generate_enhanced_mindmap(truncated_content, doc_type, filename)
+            return await self._generate_enhanced_mindmap(truncated_content, doc_type)
     
     def _merge_chunk_topics(self, chunk_topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Merge and deduplicate topics from multiple chunks with improved logic"""
@@ -631,7 +643,7 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
         }
         self._content_cache.clear()
     
-    async def _generate_enhanced_mindmap(self, document_content: str, doc_type: DocumentType, filename: str) -> str:
+    async def _generate_enhanced_mindmap(self, document_content: str, doc_type: DocumentType) -> str:
         """Generate mindmap with enhanced features"""
         # Calculate document limits
         doc_words = len(document_content.split())
