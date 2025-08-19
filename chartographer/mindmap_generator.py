@@ -274,7 +274,7 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
 
 
             # Save Mermaid syntax
-            mermaid_output_path = os.path.join(output_dir, f"{base_filename}_mermaid.txt")
+            mermaid_output_path = os.path.join(output_dir, f"{base_filename}_mermaid.mmd")
             with open(mermaid_output_path, 'w', encoding='utf-8') as mermaid_file:
                 mermaid_file.write(mindmap_result.mermaid)
             self.logger.info(f"✅ Saved Mermaid syntax to: {mermaid_output_path}")
