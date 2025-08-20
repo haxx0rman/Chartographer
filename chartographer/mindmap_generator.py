@@ -230,7 +230,7 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             if doc_type not in self.type_prompts:
                 self.type_prompts[doc_type] = self.type_prompts[DocumentType.GENERAL]
 
-    async def generate_mindmap_from_file(self, filename: str, output_dir: str = "", save_files = True) -> Mindmap:
+    async def generate_mindmap_from_file(self, filename: str, output_dir: str = "", save_files = False) -> Mindmap:
         """
         Generate a mindmap from a file by reading its content and calling the text-based generator.
         Also saves the generated mindmaps and related statistics to the specified output directory.
@@ -307,7 +307,7 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             self.logger.error(f"Failed to save mindmap outputs: {e}")
 
 
-    async def generate_mindmap_from_text(self, text_content: str, output_dir: str = "", save_files = True) -> Mindmap:
+    async def generate_mindmap_from_text(self, text_content: str, output_dir: str = "", save_files = False) -> Mindmap:
         """Generate a comprehensive mindmap with advanced features and chunking support"""
         if output_dir == "" and save_files:
             raise ValueError("Output directory must be specified if save_files is True")
