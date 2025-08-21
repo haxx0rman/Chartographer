@@ -270,17 +270,16 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
             os.makedirs(output_dir, exist_ok=True)
 
             # Base filename for outputs (use document filename without extension)
-            base_filename = os.path.splitext(os.path.basename(mindmap_result.document_filename))[0]
-
+            
 
             # Save Mermaid syntax
-            mermaid_output_path = os.path.join(output_dir, f"{base_filename}_mermaid.mmd")
+            mermaid_output_path = os.path.join(output_dir, f"mindmap.mmd")
             with open(mermaid_output_path, 'w', encoding='utf-8') as mermaid_file:
                 mermaid_file.write(mindmap_result.mermaid)
             self.logger.info(f"✅ Saved Mermaid syntax to: {mermaid_output_path}")
 
             # Save Markdown outline
-            markdown_output_path = os.path.join(output_dir, f"{base_filename}_outline.md")
+            markdown_output_path = os.path.join(output_dir, f"mindmap.md")
             with open(markdown_output_path, 'w', encoding='utf-8') as markdown_file:
                 markdown_file.write(mindmap_result.markdown)
             self.logger.info(f"✅ Saved Markdown outline to: {markdown_output_path}")
@@ -298,7 +297,7 @@ Example: ["Easy to use", "Flexible configuration", "Good performance"]"""
                 }
             }
 
-            stats_output_path = os.path.join(output_dir, f"{base_filename}_stats.json")
+            stats_output_path = os.path.join(output_dir, f"stats.json")
             with open(stats_output_path, 'w', encoding='utf-8') as stats_file:
                 json.dump(stats, stats_file, indent=4)
             self.logger.info(f"✅ Saved token usage and stats to: {stats_output_path}")
